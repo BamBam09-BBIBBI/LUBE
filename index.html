@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shell Lube Bay — Executive Dashboard</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+<style>
+:root{--red:#d9232b;--yellow:#ffd500;--ink:#20252b;--muted:#727679;--line:#e7e7e2}
+body{margin:0;background:#f6f6f2;color:var(--ink);font-family:Tahoma,Arial,sans-serif}body h2{font-weight:700;font-size:18px}body h3{font-weight:700;font-size:15px}.card{padding:25px;border:1px solid var(--line);border-radius:20px;background:white}.muted{font-size:12px;color:var(--muted);line-height:1.9}.eyebrow{font-size:11px;letter-spacing:2px;font-weight:700;color:#a87d00}.value{font-size:32px;font-weight:700;letter-spacing:-1px;margin:10px 0}.big{font-size:58px;font-weight:700;letter-spacing:-2px;line-height:1.2}.chart{position:relative;height:300px}.tall{height:340px}body button,body select,body input{font:inherit}body select,body input{border:1px solid #d8d8d2;border-radius:10px;padding:9px 12px;background:#fff;color:#20252b;max-width:100%}body button{border-radius:10px;padding:10px 16px;background:#ffd500;color:#20252b;cursor:pointer;font-weight:700}body button.secondary{background:#efefeb}button:disabled{opacity:.4;cursor:wait}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #db9210;outline-offset:3px}summary{cursor:pointer;font-weight:700}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:12px 9px;border-bottom:1px solid var(--line);text-align:left}th{color:#727679;font-weight:400}td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}td input{width:110px}td select{min-width:125px}.notice{border-left:4px solid #ffd500;background:#fff9db;border-radius:9px;padding:14px 18px;font-size:13px;line-height:1.9}.progress{height:12px;background:#eeeae0;border-radius:9px;overflow:hidden}.progress>div{background:#d9232b;height:100%;width:0}.chip{background:#f1f1eb;border-radius:30px;padding:6px 11px;font-size:11px}.empty{text-align:center;padding:24px;color:#727679}.over{outline:3px dashed #d9232b}.small{font-size:11px}.scroll{overflow:auto;max-height:500px}#messages{white-space:pre-line;font-size:12px;line-height:1.7}footer{line-height:1.9}.hero{background:linear-gradient(115deg,#fff,#fffbed)}@media(max-width:640px){.card{padding:18px}.big{font-size:44px}.value{font-size:27px}.chart{height:300px}header h1{font-size:23px!important}}
+</style></head><body>
+<header style="background:#ffd500;border-bottom:5px solid #d9232b"><div class="max-w-7xl mx-auto px-5 py-7 flex flex-wrap items-center justify-between gap-5"><div><div class="eyebrow" style="color:#a82126">SHELL • LUBE BAY</div><h1 class="text-3xl font-bold mt-2">ผลการขายศูนย์เปลี่ยนถ่าย</h1><p class="muted" style="color:#584e2d">Executive Dashboard · น้ำมันเครื่อง · รุ่นพร้อมใช้ 2.2</p></div><button id="exportPNG" class="secondary">บันทึกภาพ PNG</button><button id="choose" style="background:#20252b;color:white">นำเข้ารายงาน CSV</button><input id="files" type="file" accept=".csv,.tsv,.txt" multiple hidden></div></header>
+<main class="max-w-7xl mx-auto p-5 space-y-5">
+<section id="dropzone" class="card flex flex-wrap items-center justify-between gap-4" style="padding:17px 23px;border-style:dashed"><div><b>ลากรายงานมาวางที่นี่</b><p class="muted">ใช้ ProductSales สำหรับ KPI และ HourlyTrends สำหรับรายชั่วโมง • รองรับไฟล์คั่นด้วยแท็บและ UTF-16</p></div><span class="chip">ไฟล์อ่านในเครื่องของคุณ</span></section>
+<div id="messages" role="status" aria-live="polite"></div><details id="pngPreview" class="card" hidden><summary>ภาพสรุปที่สร้างล่าสุด</summary><a id="pngDownload" class="block my-3" style="color:#b31e25;text-decoration:underline">ดาวน์โหลดภาพ PNG อีกครั้ง</a><img id="pngImage" alt="ภาพสรุปแดชบอร์ดที่สร้างล่าสุด" style="width:100%;max-width:800px;height:auto"></details>
+<section class="flex flex-wrap items-end gap-3"><label class="muted">มุมมอง<br><select id="mode"><option value="month">รายเดือน</option><option value="day">รายวัน</option><option value="all">รวมทั้งหมด</option></select></label><label class="muted" id="monthLabel">เดือนของ KPI<br><select id="month"></select></label><label class="muted" id="dayLabel" hidden>วันที่<br><input id="day" type="date"></label><p id="freshness" class="muted ml-auto"></p></section>
+<div id="quality" class="notice">นำเข้า ProductSales เพื่อเริ่มรายงาน</div>
+<section class="card hero"><div class="flex flex-wrap justify-between gap-4"><div><div class="eyebrow">MONTHLY PERFORMANCE</div><h2 id="monthTitle" class="mt-2">ยอดสะสมเทียบเป้ารายเดือน</h2><p id="asOf" class="muted"></p></div><div><label class="muted">เป้าเดือนนี้ (ลิตร)<br><input id="target" type="number" min="0.01" step="any" value="370" style="width:130px"></label><button id="saveTarget" class="ml-2">บันทึกเป้า</button></div></div>
+<div class="grid md:grid-cols-3 gap-7 mt-6"><div><div class="flex items-end gap-3"><span class="big" id="mtd">—</span><span class="muted mb-2">ลิตร</span></div><p id="achievement" class="mt-3 font-bold"></p><div class="progress mt-3"><div id="bar"></div></div><p id="paceStatus" class="muted mt-3"></p></div><div><div class="muted">ยังขาดจากเป้า</div><div id="remaining" class="value">—</div><p id="needed" class="muted"></p></div><div><div class="muted" id="forecastTitle">คาดการณ์สิ้นเดือน</div><div id="forecast" class="value">—</div><p id="forecastNote" class="muted"></p></div></div></section>
+<section class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"><article class="card"><div class="muted">น้ำมันเครื่องในช่วงที่เลือก</div><div id="periodLitres" class="value">—</div><p id="periodLitresNote" class="muted">ลิตรที่คำนวณได้</p></article><article class="card"><div class="muted">ยอดขายน้ำมันเครื่อง</div><div id="oilSales" class="value">—</div><p class="muted">บาท • รวมมูลค่าชุดที่มีน้ำมันเครื่อง ไม่แยกราคาส่วนประกอบ</p></article><article class="card"><div class="muted">ยอดขายรวมศูนย์บริการ</div><div id="baySales" class="value">—</div><p class="muted">บาท • เฉพาะ Lubricants Service / Lube Bays</p></article><article class="card"><div class="muted">ข้อมูลน้ำมันเครื่องรอตรวจ</div><div id="pending" class="value">—</div><p class="muted">รหัสสินค้ารอประเภทหรือขนาด • แก้ได้ด้านล่าง</p></article></section>
+<section class="grid lg:grid-cols-3 gap-5"><article class="card lg:col-span-2"><h2>ลิตรสะสมเทียบเส้นเป้าหมาย</h2><p class="muted mb-4">อิงเดือนของ KPI • เส้นเป้าแบ่งเท่ากันตามวันปฏิทิน • ไม่เติมยอดจริงหลังวันที่ข้อมูลล่าสุด</p><div class="chart"><canvas id="cumulative"></canvas></div></article><article class="card"><h2>5 อันดับน้ำมันเครื่อง</h2><p class="muted mb-4">ตามลิตรในช่วงที่เลือก • ไม่รวมรายการที่ยังไม่ทราบขนาด</p><div class="chart"><canvas id="top"></canvas></div></article></section>
+<details id="details" class="card"><summary>รายละเอียดการขาย · สินค้า · ของแถม · ช่วงเวลา</summary><div class="grid lg:grid-cols-2 gap-6 mt-6"><article id="weekdayPanel"><div class="flex flex-wrap justify-between gap-2"><h2>ลิตรตามวันในสัปดาห์</h2><select id="weekdayMode" aria-label="วิธีแสดงรายสัปดาห์"><option value="average">เฉลี่ยต่อวัน</option><option value="total">รวมทั้งช่วง</option></select></div><p id="weekdayNote" class="muted my-3"></p><div class="chart"><canvas id="weekly"></canvas></div></article><article><h2>ยอดขายน้ำมันเครื่องตามช่วงเวลา</h2><p id="hourNote" class="muted my-3"></p><div class="chart" id="hourWrap"><canvas id="hourly"></canvas></div><p id="hourEmpty" class="empty" hidden></p></article></div><div class="flex flex-wrap justify-between items-center mt-8 gap-3"><h2>รายละเอียดสินค้า</h2><select id="sort" aria-label="จัดอันดับสินค้า"><option value="litres">เรียงตามลิตร</option><option value="quantity">เรียงตามจำนวนขาย</option><option value="sales">เรียงตามยอดขายบาท</option></select></div><p class="muted mt-2">Quantity × ลิตรต่อหน่วย • เครื่องหมาย — หมายถึงไม่มีข้อมูลหรือยังตรวจไม่ครบ</p><div class="scroll mt-3"><table><thead><tr><th>สินค้า</th><th>ประเภท</th><th class="num">Quantity</th><th class="num">ลิตร/หน่วย</th><th class="num">ลิตร</th><th class="num">ยอดขายบาท</th></tr></thead><tbody id="products"></tbody></table></div><h2 class="mt-6">ของแถมโปรโมชัน</h2><div class="scroll mt-3"><table><thead><tr><th>สินค้า</th><th class="num">จำนวนแจกตาม Quantity</th></tr></thead><tbody id="gifts"></tbody></table></div></details>
+<details id="mappingPanel" class="card"><summary id="mappingTitle">ตรวจสอบประเภทและขนาดบรรจุ</summary><p class="muted mt-3">ระบุเฉพาะลิตรน้ำมันเครื่องต่อหน่วยซื้อ เช่น ชุดน้ำมันเครื่อง 0.8L + น้ำมันเกียร์ 0.12L ให้ยืนยัน 0.8 • ไม่เดาขนาดจากชื่อที่ถูกตัด • การแก้ไขจำตามรหัสสินค้าในเบราว์เซอร์นี้</p><div class="flex flex-wrap gap-3 mt-4"><input id="search" placeholder="ค้นหาชื่อหรือรหัสสินค้า" aria-label="ค้นหาสินค้า"><label class="muted"><input id="onlyPending" type="checkbox" checked> เฉพาะรายการรอตรวจ</label></div><div class="scroll mt-3"><table><thead><tr><th>รหัส / สินค้า</th><th>ประเภทที่ใช้</th><th>ลิตรน้ำมันเครื่อง/หน่วย</th><th>ที่มา</th></tr></thead><tbody id="mapping"></tbody></table></div></details>
+<details class="card"><summary>แหล่งข้อมูลและการตั้งค่า</summary><div id="sources" class="muted mt-4"></div><p class="muted mt-3">ไม่นำยอด Attendant มารวมกับ ProductSales เพื่อป้องกันยอดซ้ำ • การนับวันครอบคลุมใช้วันที่ในรายงานเป็นข้อมูลประกอบเท่านั้น ยอด Fuels ไม่ถูกนำมาคำนวณ • ไม่จำไฟล์ขายหลังปิดหน้า</p><div class="flex flex-wrap gap-3 mt-4"><button id="exportSettings" class="secondary">สำรองการตั้งค่า</button><button id="importSettings" class="secondary">นำเข้าการตั้งค่า</button><input id="settingsFile" type="file" accept=".json" hidden><button id="clear" class="secondary">ล้างรายงานที่นำเข้า</button></div><p id="storageNote" class="muted mt-3"></p></details>
+<footer class="muted pb-5">ฐาน KPI: ProductSales • รายชั่วโมง: HourlyTrends • ไม่มีการประมาณจำนวนรถจากจำนวนรายการซื้อ<br>ยอดขายไม่ใช่กำไร • เป้าหมายเริ่มต้น 370 ลิตรต่อเดือน • ตั้งค่าแต่ละเดือนแยกกัน</footer>
+</main><script>
+'use strict';
+const $=id=>document.getElementById(id),text=(id,v)=>$(id).textContent=v;
+const clean=v=>String(v??'').replace(/^\uFEFF/,'').trim(),norm=v=>clean(v).replace(/\s+/g,' ').toLowerCase();
+const fmt=(v,d=1)=>v==null?'—':Number(v).toLocaleString('th-TH',{maximumFractionDigits:d,minimumFractionDigits:d});
+const sum=(rs,k)=>rs.reduce((s,r)=>s+(r[k]??0),0),unique=a=>[...new Set(a)];
+const KEY='shell-lube-executive-v2';let prefs={targets:{},products:{}};let storageOK=true;
+try{const p=JSON.parse(localStorage.getItem(KEY)||'null');if(p&&p.targets&&p.products)prefs=p;}catch{storageOK=false;}
+const state={files:new Map(),charts:{},busy:false},types={oil:'น้ำมันเครื่อง',other:'สินค้าอื่น / บริการ',gift:'ของแถม',pending:'รอตรวจประเภท'};
+const hours=Array.from({length:12},(_,i)=>String(i+7).padStart(2,'0')+':00');
+const weekdays=['จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์','อาทิตย์'];
+function isLube(r){return norm(r['category name']).includes('lubricants service')&&norm(r['subcategory name'])==='lube bays';}
+function numberValue(v,required=false){
+  const s=clean(v).replace(/,/g,'');
+  if(!s){if(required)throw Error('พบค่าว่างในคอลัมน์ตัวเลขที่จำเป็น');return null;}
+  if(!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(s))throw Error('ตัวเลขไม่ถูกต้อง: '+v);
+  const n=Number(s);if(!Number.isFinite(n))throw Error('ตัวเลขเกินขอบเขต');return n;
+}
+function dateValue(v){
+  const s=clean(v);let y,m,d,match;
+  if((match=s.match(/^(\d{4})-(\d{2})-(\d{2})$/))){[,y,m,d]=match;}
+  else if((match=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))){[,d,m,y]=match;}
+  else throw Error('วันที่ต้องเป็น YYYY-MM-DD หรือ DD/MM/YYYY: '+s);
+  y=+y;m=+m;d=+d;if(y>2400)y-=543;
+  const dt=new Date(Date.UTC(y,m-1,d));
+  if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==m-1||dt.getUTCDate()!==d)throw Error('วันที่ไม่ถูกต้อง: '+s);
+  return dt.toISOString().slice(0,10);
+}
+// รองรับ comma/tab/semicolon, quoted fields, escaped quotes และ newline ในช่องข้อความ
+function parseDelimited(raw){
+  raw=raw.replace(/^\uFEFF/,'');
+  const first=raw.split(/\r?\n/).find(line=>line.trim())||'';
+  const delim=['\t',',',';'].sort((a,b)=>first.split(b).length-first.split(a).length)[0];
+  const rows=[];let row=[],field='',quoted=false;
+  const finish=()=>{row.push(field);if(row.some(c=>c.trim()))rows.push(row);row=[];field='';};
+  for(let i=0;i<raw.length;i++){
+    const c=raw[i];
+    if(c==='"'){
+      if(quoted&&raw[i+1]==='"'){field+='"';i++;}
+      else if(quoted)quoted=false;
+      else if(!field)quoted=true;
+      else field+='"'; // บางรายงานใส่เครื่องหมายนิ้วไว้ในข้อความที่ไม่ได้ครอบด้วย quote
+    }else if(c===delim&&!quoted){row.push(field);field='';}
+    else if((c==='\n'||c==='\r')&&!quoted){if(c==='\r'&&raw[i+1]==='\n')i++;finish();}
+    else field+=c;
+  }
+  if(quoted)throw Error('CSV มีเครื่องหมายคำพูดปิดไม่ครบ');
+  finish();if(rows.length<2)throw Error('ไม่พบแถวข้อมูล');
+  const headers=rows.shift().map(norm);
+  if(new Set(headers).size!==headers.length)throw Error('พบชื่อคอลัมน์ซ้ำ');
+  return {headers,rows:rows.map((r,i)=>{
+    if(r.length!==headers.length)throw Error('จำนวนคอลัมน์ไม่ตรงกันที่แถวข้อมูล '+(i+1));
+    return Object.fromEntries(headers.map((h,j)=>[h,clean(r[j])]));
+  })};
+}
+function buildFile(name,raw){
+  const parsed=parseDelimited(raw),h=parsed.headers;
+  const kind=h.includes('hour')?'H':h.includes('attendant')?'A':h.includes('quantity')?'P':null;
+  if(!kind)throw Error('ไม่รู้จักประเภทรายงาน');
+  const dateKey=kind==='A'?'open date':'date';
+  const required=['category name','subcategory name','product name','sale value',dateKey];
+  if(kind!=='H')required.push('quantity');
+  if(kind!=='H'&&!h.includes('delivery count')&&!h.includes('purchase count'))throw Error('ไม่มี Delivery Count หรือ Purchase Count');
+  for(const col of required)if(!h.includes(col))throw Error('ไม่พบคอลัมน์ '+col);
+  const coverage=new Set(parsed.rows.map(r=>dateValue(r[dateKey]))); const rows=[];
+  parsed.rows.forEach((r,i)=>{
+    if(!isLube(r))return;
+    try{
+      let hour=null;
+      if(kind==='H'){
+        const m=clean(r.hour).match(/^(\d{1,2})(?::(\d{2}))?(?::00)?$/);
+        if(!m||+m[1]>23||(m[2]&&m[2]!=='00'))throw Error('Hour ไม่ใช่ชั่วโมงเต็มที่ถูกต้อง');
+        hour=+m[1];
+      }
+      rows.push({id:r['product code']||norm(r['product name']),date:dateValue(r[dateKey]),name:r['product name']||'(ไม่ระบุสินค้า)',attendant:r.attendant||'(ไม่ระบุพนักงาน)',
+        quantity:kind==='H'?null:numberValue(r.quantity,true),sales:numberValue(r['sale value'],true),
+        delivery:numberValue(r['delivery count']),purchase:numberValue(r['purchase count']),hour});
+    }catch(e){throw Error('แถวข้อมูล '+(i+1)+': '+e.message);}
+  });
+  return {name,kind,rows,total:parsed.rows.length,dates:coverage};
+}
+
+function readFile(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();reader.onerror=()=>reject(Error('อ่านไฟล์ไม่สำเร็จ'));reader.onabort=()=>reject(Error('การอ่านไฟล์ถูกยกเลิก'));
+    reader.onload=()=>{try{
+      const b=new Uint8Array(reader.result);let encoding='utf-8';
+      if(b[0]===255&&b[1]===254)encoding='utf-16le';else if(b[0]===254&&b[1]===255)encoding='utf-16be';
+      let raw=new TextDecoder(encoding).decode(b);
+      if(encoding==='utf-8'&&raw.includes('\uFFFD'))raw=new TextDecoder('windows-874').decode(b);
+      resolve(raw);
+    }catch(e){reject(e);}};reader.readAsArrayBuffer(file);
+  });
+}
+
+function save(){try{localStorage.setItem(KEY,JSON.stringify(prefs));storageOK=true;}catch{storageOK=false;}text('storageNote',storageOK?'จำเป้าหมายและข้อมูลสินค้าไว้ในเบราว์เซอร์นี้แล้ว • สำรองเป็น JSON ได้':'เบราว์เซอร์ไม่อนุญาตให้จำการตั้งค่า กรุณากดสำรองการตั้งค่า');}
+function classify(r){
+ const n=norm(r.name);let type='pending';
+ if(/ฟรี|ของแถม|ของสมนาคุณ|disney|ดิสนีย์|\bfree\b|\bgift\b/.test(n))type='gift';
+ else if(/ไส้กรอง|กรองอากาศ|ปะเก็น|ใบปัด|ค่าแรง|ค่าอัด|จารบี|น้ำกลั่น|น้ำยา|coolant|brake|clutch|dot[34]|ฟลัชชิ่ง|flush|สไปแร็กซ์|spirax|ลองไลฟ์/.test(n))type='other';
+ else if(/น้ำมันเครื่อง|helix|เฮลิกส์|rimula|ริมูล่า|advance|แอ๊ดว้านซ์/.test(n))type='oil';
+ const match=clean(r.name).match(/(?:^|[\s_-])(\d+(?:\.\d+)?)\s*(?:L|ลิตร)\s*$/i);
+ const bundle=/\+|gear|เกียร์|ชุด/.test(n);let size=match&&!bundle?Number(match[1]):null;
+ const override=prefs.products[r.id];if(override){type=override.type;if(override.size!==null&&override.size!==undefined)size=override.size;}
+ if(type!=='oil')size=null;
+ return {type,size,manual:!!override,reason:bundle?'ชุดสินค้าผสม: ยืนยันเฉพาะน้ำมันเครื่อง':size==null?'ไม่พบขนาดที่ยืนยันได้':'อ่านขนาดจากท้ายชื่อ'};
+}
+function rows(kind){return [...state.files.values()].filter(f=>f.kind===kind).flatMap(f=>f.rows);}
+function coverage(kind){return unique([...state.files.values()].filter(f=>f.kind===kind).flatMap(f=>[...f.dates])).sort();}
+function loaded(kind){return [...state.files.values()].some(f=>f.kind===kind);}
+function inPeriod(date){const m=$('mode').value;return m==='all'||(m==='day'?date===$('day').value:date.startsWith($('month').value));}
+function enrich(rs){return rs.map(r=>{const c=classify(r);return {...r,...c,litres:c.type==='oil'&&c.size!=null&&r.quantity!=null?r.quantity*c.size:null};});}
+function stats(rs){const oil=rs.filter(r=>r.type==='oil'),pending=rs.filter(r=>r.type==='pending'||r.type==='oil'&&r.size==null);return {litres:sum(oil,'litres'),sales:sum(oil,'sales'),pending:unique(pending.map(r=>r.id)),oil};}
+function monthDays(m){const [y,n]=m.split('-').map(Number);return new Date(Date.UTC(y,n,0)).getUTCDate();}
+function monthly(rs,dates,m,cutoff){
+ if(!m||!cutoff)return null;const days=monthDays(m),elapsed=+cutoff.slice(-2),data=rs.filter(r=>r.date.startsWith(m)&&r.date<=cutoff),s=stats(data);
+ const expected=Array.from({length:elapsed},(_,i)=>m+'-'+String(i+1).padStart(2,'0')),missing=expected.filter(d=>!dates.includes(d));
+ const complete=!missing.length&&!s.pending.length,target=prefs.targets[m]??370,remaining=Math.max(0,target-s.litres),left=days-elapsed;
+ return {...s,data,days,elapsed,missing,complete,target,remaining,left,forecast:complete?s.litres/elapsed*days:null,needed:complete&&left>0?remaining/left:null};
+}
+function groups(rs){const map=new Map();rs.forEach(r=>{if(!map.has(r.id))map.set(r.id,{...r,quantity:0,sales:0,litres:0,incomplete:false});const g=map.get(r.id);g.quantity+=r.quantity??0;g.sales+=r.sales;g.litres+=r.litres??0;if(r.type==='pending'||r.type==='oil'&&r.size==null)g.incomplete=true;});return [...map.values()];}
+function draw(id,type,labels,datasets,horizontal=false){
+ if(!window.Chart)return;state.charts[id]?.destroy();state.charts[id]=new Chart($(id),{type,data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,animation:false,indexAxis:horizontal?'y':'x',plugins:{legend:{display:datasets.length>1,labels:{usePointStyle:true}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(horizontal?c.parsed.x:c.parsed.y)}}},scales:{x:{beginAtZero:horizontal,grid:{display:horizontal},ticks:{maxRotation:50,autoSkip:!horizontal,maxTicksLimit:id==='hourly'?12:16}},y:{beginAtZero:!horizontal,grid:{display:!horizontal,color:'#eeeeea'},ticks:{callback:function(v){const s=this.getLabelForValue(v);return horizontal&&s.length>30?s.slice(0,11)+'…'+s.slice(-17):s;}}}}}});
+}
+const series=(label,data,color='#d9232b',extra={})=>({label,data,backgroundColor:color,borderColor:color,borderWidth:2,borderRadius:5,pointRadius:2,tension:0,spanGaps:false,...extra});
+function table(id,data,n){const b=$(id);b.replaceChildren();if(!data.length){const td=b.insertRow().insertCell();td.colSpan=n;td.className='empty';td.textContent='ไม่มีข้อมูลในช่วงที่เลือก';return;}data.forEach(cells=>{const tr=b.insertRow();cells.forEach((v,i)=>{const td=tr.insertCell();td.textContent=v;if(i>1||n===2&&i===1)td.className='num';});});}
+function updateDates(){const dates=coverage('P'),months=unique(dates.map(d=>d.slice(0,7))).sort(),old=$('month').value;$('month').replaceChildren();months.forEach(m=>$('month').add(new Option(new Date(m+'-01T00:00:00Z').toLocaleDateString('th-TH',{month:'long',year:'numeric',timeZone:'UTC'}),m)));$('month').value=months.includes(old)?old:months.at(-1)||'';if(dates.length){$('day').min=dates[0];$('day').max=dates.at(-1);if(!dates.includes($('day').value))$('day').value=dates.at(-1);}}
+function renderMapping(){
+ const all=groups(enrich([...rows('P'),...rows('H')])),q=norm($('search').value),b=$('mapping');b.replaceChildren();
+ all.filter(r=>(!$('onlyPending').checked||r.incomplete)&&(!q||norm(r.name+' '+r.id).includes(q))).sort((a,b)=>Number(b.incomplete)-Number(a.incomplete)||a.name.localeCompare(b.name,'th')).forEach(r=>{
+  const tr=b.insertRow(),name=tr.insertCell();name.textContent=r.name;const small=document.createElement('div');small.className='muted';small.textContent=r.id;name.append(small);
+  const select=document.createElement('select');select.setAttribute('aria-label','ประเภท '+r.id);for(const [v,label]of Object.entries(types))select.add(new Option(label,v));select.value=r.type;tr.insertCell().append(select);
+  const input=document.createElement('input');input.type='number';input.min='0.001';input.step='any';input.value=r.size??'';input.disabled=r.type!=='oil';input.placeholder='ระบุลิตร';input.setAttribute('aria-label','ลิตรต่อหน่วย '+r.id);tr.insertCell().append(input);
+  tr.insertCell().textContent=r.manual?'ผู้ใช้ยืนยัน':r.reason;
+  const update=()=>{const size=input.value===''?null:Number(input.value);if(size!==null&&(!Number.isFinite(size)||size<=0)){text('messages','ขนาดบรรจุต้องมากกว่า 0');return;}prefs.products[r.id]={type:select.value,size:select.value==='oil'?size:null};save();render();};select.onchange=()=>{input.disabled=select.value!=='oil';};input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();update();}};const button=document.createElement('button');button.textContent='บันทึก';button.setAttribute('aria-label','บันทึกสินค้า '+r.id);button.style.marginLeft='6px';button.onclick=update;input.parentElement.append(button);
+ });if(!b.rows.length){const td=b.insertRow().insertCell();td.colSpan=4;td.className='empty';td.textContent='ไม่มีสินค้ารอตรวจตามตัวกรองนี้';}
+}
+function render(){
+ const dates=coverage('P'),m=$('month').value,mode=$('mode').value,p=enrich(rows('P')),selected=p.filter(r=>inPeriod(r.date)),s=stats(selected),periodDates=dates.filter(inPeriod),available=loaded('P')&&periodDates.length>0;
+ $('dayLabel').hidden=mode!=='day';$('month').disabled=mode==='day';$('target').disabled=!m;
+ const md=dates.filter(d=>d.startsWith(m)),cutoff=mode==='day'?($('day').value.startsWith(m)?$('day').value:null):md.at(-1),k=monthly(p,dates,m,cutoff);
+ text('freshness',dates.length?'ProductSales ล่าสุดถึง '+dates.at(-1):'รอนำเข้า ProductSales');text('monthTitle','ยอดสะสมเดือน '+(m||'—'));text('asOf',cutoff?'ตั้งแต่ต้นเดือนถึง '+cutoff+' • มุมมองรวมทั้งหมดยังคงใช้เป้าของเดือนที่เลือก':'ยังไม่มีข้อมูลเดือนนี้');$('target').value=m?prefs.targets[m]??370:370;
+ text('mtd',k?fmt(k.litres):'—');text('achievement',k?fmt(k.litres/k.target*100)+'% ของเป้า '+fmt(k.target)+' ลิตร'+(!k.complete?' • ยอดบางส่วน':''):'');$('bar').style.width=(k?Math.min(100,Math.max(0,k.litres/k.target*100)):0)+'%';
+ text('remaining',k?fmt(k.remaining)+' ลิตร':'—');text('needed',!k?'':!k.complete?'รอข้อมูลครบก่อนประเมินลิตรที่ต้องขายต่อวัน':k.left>0?'ต้องขายเฉลี่ย '+fmt(k.needed)+' ลิตร/วัน ใน '+k.left+' วันที่เหลือ':'สิ้นเดือนแล้ว');
+ text('forecastTitle',k&&k.left===0?'ยอดสิ้นเดือน':'คาดการณ์สิ้นเดือน');text('forecast',k?.forecast!=null?fmt(k.forecast)+' ลิตร':'—');text('forecastNote',!k?'':!k.complete?'ยังไม่คาดการณ์: ข้อมูลวันหรือขนาดสินค้าไม่ครบ':k.left===0?'ยอดจริงครบเดือน':'Run-rate: '+fmt(k.litres/k.elapsed)+' ลิตร/วัน × '+k.days+' วัน • ประมาณการ ไม่ใช่ยอดยืนยัน');
+ text('paceStatus',!k?'':!k.complete?'ตรวจรายการรอยืนยันด้านล่างก่อนใช้ตัดสินความก้าวหน้า':k.litres>=k.target?'ถึงเป้ารายเดือนแล้ว':(k.litres>=k.target*k.elapsed/k.days?'สูงกว่า':'ต่ำกว่า')+'เป้าตามสัดส่วนวัน '+fmt(Math.abs(k.litres-k.target*k.elapsed/k.days))+' ลิตร');
+ text('periodLitres',available?fmt(s.litres):'—');text('periodLitresNote','ลิตรที่คำนวณได้'+(s.pending.length?' • ยังไม่ครบ':'')+' • '+(mode==='day'?$('day').value:mode==='month'?m:'รวมทุกรายงาน'));
+ text('oilSales',available?fmt(s.sales,2):'—');text('baySales',available?fmt(sum(selected,'sales'),2):'—');text('pending',available?fmt(s.pending.length,0):'—');
+ const parts=[];if(!loaded('P'))parts.push('นำเข้า ProductSales เพื่อเริ่มรายงาน');else if(!available)parts.push('ไม่มีรายงานครอบคลุมวันที่เลือก ไม่ถือว่ายอดขายเป็นศูนย์');else parts.push('คำนวณเฉพาะน้ำมันเครื่องใน Lubricants Service / Lube Bays');if(k?.pending.length)parts.push('เดือนนี้มี '+k.pending.length+' รหัสสินค้ารอยืนยันประเภท/ลิตรต่อหน่วย ยอดลิตรจึงยังไม่ครบ');if(k?.missing.length)parts.push('ข้อมูลเดือนนี้ขาด '+k.missing.length+' วัน: '+k.missing.slice(0,5).join(', ')+(k.missing.length>5?' …':''));text('quality',parts.join(' • '));
+ let cumulative=0;const labels=k?Array.from({length:k.days},(_,i)=>String(i+1)):[],actual=labels.map((_,i)=>{const d=m+'-'+String(i+1).padStart(2,'0');cumulative+=sum(p.filter(r=>r.date===d&&r.type==='oil'),'litres');return d<=cutoff&&dates.includes(d)?cumulative:null;});
+ draw('cumulative','line',labels,[series('ลิตรสะสม'+(k&&!k.complete?' (บางส่วน)':''),actual),series('เป้าตามสัดส่วนวัน',labels.map((_,i)=>k.target*(i+1)/k.days),'#c29a00',{borderDash:[5,5],pointRadius:0})]);
+ const products=groups(selected),top=products.filter(r=>r.type==='oil'&&!r.incomplete).sort((a,b)=>b.litres-a.litres).slice(0,5);draw('top','bar',top.map(r=>r.name),[series('ลิตร',top.map(r=>r.litres),'#ffd500')],true);
+ $('weekdayPanel').hidden=mode==='day';const weekday=Array(7).fill(0),n=Array(7).fill(0);periodDates.forEach(d=>n[(new Date(d+'T00:00Z').getUTCDay()+6)%7]++);s.oil.forEach(r=>weekday[(new Date(r.date+'T00:00Z').getUTCDay()+6)%7]+=r.litres??0);const avg=$('weekdayMode').value==='average';draw('weekly','bar',weekdays,[series(avg?'ลิตร/วัน':'ลิตร',weekday.map((v,i)=>n[i]?(avg?v/n[i]:v):null),'#ffd500')]);text('weekdayNote',(avg?'หารด้วยจำนวนวันของวันนั้นที่รายงานครอบคลุม รวมวันที่ขายน้ำมันเครื่องเป็นศูนย์':'ยอดรวมเฉพาะวันที่รายงานครอบคลุม')+(s.pending.length?' • ลิตรยังไม่ครบ':'')+' • วันที่ไม่มีรายงานไม่ถือเป็นศูนย์');
+ const h=enrich(rows('H')).filter(r=>inPeriod(r.date)),ho=h.filter(r=>r.type==='oil'),hour=Array(12).fill(0);ho.forEach(r=>{if(r.hour>=7&&r.hour<=18)hour[r.hour-7]+=r.sales;});const hc=coverage('H').filter(inPeriod),hvalid=hc.length>0&&ho.length>0;$('hourWrap').hidden=!hvalid;$('hourEmpty').hidden=hvalid;text('hourEmpty',!loaded('H')?'นำเข้า HourlyTrends เพื่อดูยอดขายตามชั่วโมง':'ไม่มีรายการขายน้ำมันเครื่องรายชั่วโมงในช่วงที่เลือก');if(hvalid)draw('hourly','line',hours,[series('ยอดขายบาท',hour)]);const peak=Math.max(...hour);text('hourNote','07:00–18:00 น. • เวลาเกิดยอดขาย ไม่ใช่จำนวนรถหรือเวลาทำงานของช่าง'+(peak>0?' • สูงสุด '+hours.filter((_,i)=>hour[i]===peak).join(', '):'')+(h.some(r=>r.type==='pending')?' • ยังมีสินค้ารอตรวจประเภท':'')+(hc.length&&hc.join()!==periodDates.join()?' • ช่วงวันที่ของ HourlyTrends ต่างจาก ProductSales':''));
+ products.sort((a,b)=>(b[$('sort').value]??0)-(a[$('sort').value]??0));table('products',products.filter(r=>r.type!=='gift').map(r=>[r.name,types[r.type],fmt(r.quantity),r.type==='oil'?fmt(r.size):'—',r.type==='oil'&&!r.incomplete?fmt(r.litres):'—',fmt(r.sales,2)]),6);table('gifts',products.filter(r=>r.type==='gift').sort((a,b)=>b.quantity-a.quantity).map(r=>[r.name,fmt(r.quantity)]),2);
+ text('mappingTitle','ตรวจสอบประเภทและขนาดบรรจุ • '+unique(enrich(rows('P')).filter(r=>r.type==='pending'||r.type==='oil'&&r.size==null).map(r=>r.id)).length+' รหัสรอตรวจจาก ProductSales');renderMapping();
+ $('sources').replaceChildren();for(const f of state.files.values()){const div=document.createElement('div');div.textContent=f.name+' • Lube Bays '+f.rows.length+'/'+f.total+' แถว'+(f.kind==='A'?' • รับไว้ แต่ไม่ใช้คำนวณในมุมมองผู้บริหาร':'');$('sources').append(div);}
+ text('storageNote',storageOK?'จำเป้าและการตั้งค่าสินค้าในเบราว์เซอร์นี้ • ควรสำรองก่อนเปลี่ยนเครื่อง':'ไม่สามารถจำการตั้งค่าได้ กรุณาสำรองเป็น JSON');
+}
+async function importFiles(files){if(state.busy)return;state.busy=true;$('choose').disabled=true;$('clear').disabled=true;const notes=[];try{for(const file of files){try{const f=buildFile(file.name,await readFile(file)),key=f.kind+':'+file.name;for(const [k,old]of state.files)if(k!==key&&old.kind===f.kind&&[...f.dates].some(d=>old.dates.has(d)))throw Error('ช่วงวันทับกับ '+old.name+' กรุณาล้างรายงานก่อนนำเข้าชุดทับช่วง');state.files.set(key,f);notes.push('✓ '+file.name);}catch(e){notes.push('✗ '+file.name+': '+e.message);}}updateDates();render();}finally{state.busy=false;$('choose').disabled=false;$('clear').disabled=false;$('files').value='';text('messages',notes.join('\n'));}}
+function validatePrefs(p){if(!p||typeof p!=='object'||!p.targets||!p.products)throw Error('โครงสร้างไฟล์ตั้งค่าไม่ถูกต้อง');const out={targets:{},products:{}};for(const [m,v]of Object.entries(p.targets)){if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(m)||typeof v!=='number'||!Number.isFinite(v)||v<=0)throw Error('เป้าหมายไม่ถูกต้อง');out.targets[m]=v;}for(const [id,v]of Object.entries(p.products)){if(!v||!Object.hasOwn(types,v.type)||!(v.size===null||typeof v.size==='number'&&Number.isFinite(v.size)&&v.size>0))throw Error('ประเภทหรือขนาดไม่ถูกต้อง');Object.defineProperty(out.products,id,{value:{type:v.type,size:v.size},enumerable:true,writable:true,configurable:true});}return out;}
+// Export สรุปผู้บริหารด้วย Canvas โดยไม่โหลดไลบรารีภาพเพิ่ม
+function wrapImageText(ctx,value,x,y,width,lineHeight=28){
+ const tokens=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter('th',{granularity:'word'}).segment(String(value))].map(s=>s.segment):Array.from(String(value));let line='';
+ for(const token of tokens){if(ctx.measureText(line+token).width>width&&line){ctx.fillText(line,x,y);y+=lineHeight;line='';}line+=token;}if(line){ctx.fillText(line,x,y);y+=lineHeight;}return y;
+}
+async function exportPNG(){
+ const button=$('exportPNG');if(!loaded('P')||!coverage('P').length){text('messages','กรุณานำเข้า ProductSales ก่อนบันทึกภาพ');return;}
+ button.disabled=true;button.textContent='กำลังสร้างภาพ…';
+ try{
+  if(document.fonts)await document.fonts.ready;
+  const canvas=document.createElement('canvas');canvas.width=1600;canvas.height=2100;const ctx=canvas.getContext('2d');
+  const font=(size=24,bold=false,color='#20252b')=>{ctx.font=(bold?'bold ':'')+size+'px Tahoma, Arial, sans-serif';ctx.fillStyle=color;};
+  const box=(x,y,w,h,color='#ffffff')=>{ctx.fillStyle=color;ctx.fillRect(x,y,w,h);};
+  box(0,0,1600,2100,'#f6f6f2');box(0,0,1600,165,'#ffd500');box(0,165,1600,6,'#d9232b');font(19,true,'#a82126');ctx.fillText('SHELL • LUBE BAY',55,43);font(38,true);ctx.fillText('ผลการขายศูนย์เปลี่ยนถ่าย',55,97);
+  const scope=$('mode').value==='day'?'รายวัน '+$('day').value:$('mode').value==='month'?'รายเดือน '+$('month').value:'รวมทั้งหมด';font(21);ctx.fillText(scope+'  •  '+$('freshness').textContent,55,138);
+  font(22,false,'#594900');let y=wrapImageText(ctx,$('quality').textContent,65,217,1470,32)+24;
+  box(45,y,1510,335,'#fffbed');font(27,true);ctx.fillText($('monthTitle').textContent,70,y+44);font(19,false,'#727679');wrapImageText(ctx,$('asOf').textContent,70,y+79,1430,27);
+  font(64,true);ctx.fillText($('mtd').textContent+' ลิตร',70,y+172);font(25,true,'#b31e25');wrapImageText(ctx,$('achievement').textContent,70,y+218,470,32);font(19,false,'#727679');wrapImageText(ctx,$('paceStatus').textContent,70,y+285,470,27);
+  font(22,false,'#727679');ctx.fillText('ส่วนต่างจากเป้า',605,y+133);font(43,true);ctx.fillText($('remaining').textContent,605,y+190);font(20,false,'#727679');wrapImageText(ctx,$('needed').textContent,605,y+238,410,29);
+  font(22,false,'#727679');ctx.fillText($('forecastTitle').textContent,1070,y+133);font(43,true);ctx.fillText($('forecast').textContent,1070,y+190);font(20,false,'#727679');wrapImageText(ctx,$('forecastNote').textContent,1070,y+238,445,29);
+  y+=360;const cards=[['น้ำมันเครื่องในช่วงที่เลือก','periodLitres','ลิตรที่คำนวณได้'],['ยอดขายน้ำมันเครื่อง','oilSales','บาท รวมมูลค่าชุดสินค้า'],['ยอดขายรวมศูนย์บริการ','baySales','บาท เฉพาะ Lube Bays'],['รหัสสินค้ารอตรวจ','pending','รายการในช่วงที่เลือก']];
+  cards.forEach(([label,id,unit],i)=>{const x=45+i*385;box(x,y,355,178);font(22);ctx.fillText(label,x+22,y+39);font(38,true);ctx.fillText($(id).textContent,x+22,y+100);font(19,false,'#727679');ctx.fillText(unit,x+22,y+145);});y+=210;
+  function plot(id,x,py,w,h,title){box(x,py,w,h);font(25,true);ctx.fillText(title,x+24,py+43);const source=state.charts[id];if(!source){font(22);ctx.fillText('ไม่สามารถแสดงกราฟได้',x+24,py+100);return;}const c=document.createElement('canvas');c.width=w-40;c.height=h-88;const horizontal=id==='top';let chart;
+   try{chart=new Chart(c,{type:source.config.type,data:JSON.parse(JSON.stringify(source.data)),options:{responsive:false,animation:false,devicePixelRatio:2,indexAxis:horizontal?'y':'x',plugins:{legend:{display:!horizontal,labels:{font:{size:17}}}},scales:{x:{beginAtZero:horizontal,ticks:{font:{size:16},maxTicksLimit:16}},y:{beginAtZero:!horizontal,ticks:{font:{size:16},callback:function(v){const s=this.getLabelForValue(v);return horizontal&&s.length>27?s.slice(0,10)+'…'+s.slice(-15):s;}}}}}});chart.update('none');ctx.drawImage(c,x+20,py+68,w-40,h-88);}finally{chart?.destroy();}
+  }
+  plot('cumulative',45,y,1510,480,'ลิตรสะสมเทียบเป้ารายเดือน');y+=505;plot('top',45,y,1510,350,'5 อันดับน้ำมันเครื่องตามลิตรในช่วงที่เลือก');y+=385;
+  font(20,false,'#727679');y=wrapImageText(ctx,'ยอดลิตร = Quantity × ลิตรน้ำมันเครื่องต่อหน่วย • รายการรอตรวจยังไม่รวมในลิตร • ยอดขายไม่ใช่กำไร',55,y,1490,29);y=wrapImageText(ctx,'ฐานข้อมูล: ProductSales • เป้าหมายแยกรายเดือน • ภาพสรุปตามตัวกรองที่เลือก',55,y+6,1490,29);
+  const output=document.createElement('canvas');output.width=canvas.width;output.height=Math.min(canvas.height,y+32);output.getContext('2d').drawImage(canvas,0,0);
+  const blob=await new Promise((resolve,reject)=>output.toBlob(b=>b?resolve(b):reject(Error('สร้าง PNG ไม่สำเร็จ')),'image/png'));
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Shell-Lube-'+$('mode').value+'-'+($('mode').value==='day'?$('day').value:$('month').value)+'.png';if(state.pngURL)URL.revokeObjectURL(state.pngURL);state.pngURL=url;$('pngImage').src=url;$('pngDownload').href=url;$('pngDownload').download=a.download;$('pngPreview').hidden=false;document.body.append(a);a.click();a.remove();text('messages','สร้างภาพ PNG แล้ว หากมีหน้าต่างเลือกที่บันทึก ให้เลือกโฟลเดอร์ที่ต้องการ');
+ }catch(e){text('messages','บันทึกภาพไม่สำเร็จ: '+e.message);}finally{button.disabled=false;button.textContent='บันทึกภาพ PNG';}
+}
+// UI_BINDINGS
+$('exportPNG').onclick=exportPNG;
+$('choose').onclick=()=>$('files').click();$('files').onchange=e=>importFiles([...e.target.files]);
+for(const ev of ['dragenter','dragover'])$('dropzone').addEventListener(ev,e=>{e.preventDefault();$('dropzone').classList.add('over');});for(const ev of ['dragleave','drop'])$('dropzone').addEventListener(ev,e=>{e.preventDefault();$('dropzone').classList.remove('over');});$('dropzone').addEventListener('drop',e=>importFiles([...e.dataTransfer.files]));window.addEventListener('dragover',e=>e.preventDefault());window.addEventListener('drop',e=>e.preventDefault());
+$('mode').onchange=()=>{if($('mode').value==='day'&&$('day').value)$('month').value=$('day').value.slice(0,7);render();};$('month').onchange=render;$('day').onchange=()=>{if($('day').value)$('month').value=$('day').value.slice(0,7);render();};$('saveTarget').onclick=()=>{const m=$('month').value;if(!m)return;const v=Number($('target').value);if(!Number.isFinite(v)||v<=0){text('messages','เป้าหมายต้องมากกว่า 0');$('target').value=prefs.targets[m]??370;return;}prefs.targets[m]=v;save();render();};$('target').onkeydown=e=>{if(e.key==='Enter')$('saveTarget').click();};
+for(const id of ['weekdayMode','sort'])$(id).onchange=render;$('search').oninput=renderMapping;$('onlyPending').onchange=renderMapping;$('details').ontoggle=()=>{if($('details').open)Object.values(state.charts).forEach(c=>c.resize());};
+$('clear').onclick=()=>{state.files.clear();updateDates();render();text('messages','ล้างรายงานแล้ว การตั้งค่าเป้าและสินค้ายังคงอยู่');};
+$('exportSettings').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(prefs,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='shell-lube-settings.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};$('importSettings').onclick=()=>$('settingsFile').click();$('settingsFile').onchange=async e=>{try{if(!e.target.files.length)return;prefs=validatePrefs(JSON.parse(await readFile(e.target.files[0])));save();render();text('messages','นำเข้าการตั้งค่าแล้ว');}catch(err){text('messages',err.message);}e.target.value='';};
+try{prefs=validatePrefs(prefs);}catch{prefs={targets:{},products:{}};text('messages','การตั้งค่าเดิมไม่ถูกต้อง ใช้ค่าเริ่มต้น');}updateDates();render();if(!window.Chart)text('messages','โหลด Chart.js ไม่สำเร็จ กรุณาเชื่อมต่ออินเทอร์เน็ตแล้วเปิดหน้าใหม่');
+</script></body></html>
+
+
+
+
